@@ -1,8 +1,10 @@
-import React from 'react';
-import { TextField, Button,Box, Container, Typography, Grid, makeStyles } from '@material-ui/core';
-import { useNavigate } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
+import { TextField, Button, Box, Container, Typography, Grid, makeStyles } from '@material-ui/core';
+import { Link, useNavigate } from 'react-router-dom';
 import { useFormik } from 'formik';
 import * as Yup from 'yup';
+
+
 const useStyles = makeStyles((theme) => ({
   container: {
     marginTop: theme.spacing(10),
@@ -22,10 +24,10 @@ const useStyles = makeStyles((theme) => ({
   },
   submit: {
     margin: theme.spacing(3, 0, 2),
-    background: "#2196f3", 
+    background: "#2196f3",
     color: "#fff",
     '&:hover': {
-      background: "#1565c0", 
+      background: "#1565c0",
     },
   },
   input: {
@@ -37,7 +39,7 @@ const useStyles = makeStyles((theme) => ({
 const Registration = () => {
   const classes = useStyles();
   const history = useNavigate();
-
+  
   const formik = useFormik({
     initialValues: {
       name: '',
@@ -49,13 +51,17 @@ const Registration = () => {
     },
     validationSchema: Yup.object({
       name: Yup.string().required('Name is required'),
-      email: Yup.string().email('Invalid email address').required('Email is required'),
-      password: Yup.string().required('Password is required'),
+      email: Yup.string()
+        .matches(/^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,4}$/i, 'Please enter a valid email address')
+        .required('Email is required'),
+      password: Yup.string()
+        .matches(/^[^\s]+$/, 'Password cannot contain spaces').required('Password is required'),
       phone: Yup.string().matches(/^[0-9]+$/, 'Phone number must contain only numbers').required('Phone is required'),
       zipcode: Yup.string().matches(/^[0-9]+$/, 'Zip Code must contain only numbers').required('Zip Code is required'),
       profilepic: Yup.mixed(),
     }),
     onSubmit: async (values) => {
+      console.log(formik.values.profilepic, "formik.values.profilepic");
       const apiUrl = 'http://localhost:8000/register';
 
       try {
@@ -65,7 +71,7 @@ const Registration = () => {
         formDatas.append('password', values.password);
         formDatas.append('phone', values.phone);
         formDatas.append('zipcode', values.zipcode);
-        formDatas.append('profilepic', values.profilepic);
+        formDatas.append('file', values.profilepic);
         const response = await fetch(apiUrl, {
           method: 'POST',
           body: formDatas,
@@ -74,7 +80,9 @@ const Registration = () => {
         if (response.ok) {
           formik.resetForm();
           formik.setSubmitting(false);
+        
           history('/');
+
         } else {
           console.error('Registration failed');
         }
@@ -83,18 +91,21 @@ const Registration = () => {
       }
     },
   });
+  
+
+
 
   return (
     <Container component="main" maxWidth="xs" className={classes.container}>
       <Box className={classes.formContainer}>
-      <Typography variant="h4" align="center">
-        Registration
-      </Typography>
-      
-      <form className={classes.form} onSubmit={formik.handleSubmit}> 
-      <Grid container spacing={2}>
+        <Typography variant="h4" align="center">
+          Registration
+        </Typography>
+
+        <form className={classes.form} onSubmit={formik.handleSubmit}>
+          <Grid container spacing={2}>
             <Grid item xs={12}>
-            <TextField
+              <TextField
                 label="Name"
                 fullWidth
                 variant="outlined"
@@ -107,8 +118,8 @@ const Registration = () => {
                 helperText={formik.touched.name && formik.errors.name}
               />
             </Grid>
-          <Grid item xs={12}>
-          <TextField
+            <Grid item xs={12}>
+              <TextField
                 label="Email"
                 fullWidth
                 variant="outlined"
@@ -120,9 +131,9 @@ const Registration = () => {
                 error={formik.touched.email && Boolean(formik.errors.email)}
                 helperText={formik.touched.email && formik.errors.email}
               />
-          </Grid>
-          <Grid item xs={12}>
-          <TextField
+            </Grid>
+            <Grid item xs={12}>
+              <TextField
                 label="Password"
                 type="password"
                 fullWidth
@@ -135,9 +146,9 @@ const Registration = () => {
                 error={formik.touched.password && Boolean(formik.errors.password)}
                 helperText={formik.touched.password && formik.errors.password}
               />
-          </Grid>
-          <Grid item xs={12}>
-          <TextField
+            </Grid>
+            <Grid item xs={12}>
+              <TextField
                 label="Phone"
                 fullWidth
                 variant="outlined"
@@ -149,9 +160,9 @@ const Registration = () => {
                 error={formik.touched.phone && Boolean(formik.errors.phone)}
                 helperText={formik.touched.phone && formik.errors.phone}
               />
-          </Grid>
-          <Grid item xs={12}>
-          <TextField
+            </Grid>
+            <Grid item xs={12}>
+              <TextField
                 label="Zip Code"
                 fullWidth
                 variant="outlined"
@@ -163,10 +174,10 @@ const Registration = () => {
                 error={formik.touched.zipcode && Boolean(formik.errors.zipcode)}
                 helperText={formik.touched.zipcode && formik.errors.zipcode}
               />
-            
-          </Grid>
-          <Grid item xs={12}>
-            <input
+
+            </Grid>
+            <Grid item xs={12}>
+              <input
                 accept="image/*"
                 id="profile-pic-upload"
                 type="file"
@@ -174,16 +185,16 @@ const Registration = () => {
                 onChange={(e) => formik.setFieldValue('profilepic', e.target.files[0])}
                 name="profilepic"
               />
-            <label htmlFor="profile-pic-upload">
-              <Button
-                variant="contained"
-                component="span"
-                className={classes.submit}
-              >
-                Upload Profile Picture
-              </Button>
-            </label>
-            {formik.values.profilepic && (
+              <label htmlFor="profile-pic-upload">
+                <Button
+                  variant="contained"
+                  component="span"
+                  className={classes.submit}
+                >
+                  Upload Profile Picture
+                </Button>
+              </label>
+              {formik.values.profilepic && (
                 <div style={{ marginTop: '10px' }}>
                   <img
                     src={URL.createObjectURL(formik.values.profilepic)}
@@ -192,18 +203,23 @@ const Registration = () => {
                   />
                 </div>
               )}
+            </Grid>
           </Grid>
-        </Grid>
-        <Button
-          type="submit"
-          fullWidth
-          variant="contained"
-           style={{ background: "#2196f3", color: "#fff", marginTop: '20px' }}
-        >
-          Register
-        </Button>
-      </form>
-      
+          <Button
+            type="submit"
+            fullWidth
+            variant="contained"
+            style={{ background: "#2196f3", color: "#fff", marginTop: '20px' }}
+          >
+            Register
+          </Button>
+        </form>
+        <Typography variant="body2" align="center" style={{ marginTop: '16px' }}>
+          Already have an account?{' '}
+          <Link to="/login" style={{ color: "#2196f3" }}>
+            Sign In
+          </Link>
+        </Typography>
       </Box>
     </Container>
   );

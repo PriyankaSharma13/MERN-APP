@@ -22,15 +22,12 @@ const userSchema = new mongoose.Schema({
         type: String,
         required: true,
     },
-    profilepic: {
-        type: Buffer,
-        required: false,
-    },
+    
     is_loggedin: {
         type: Boolean,
-        default: false, // Default to false when a new user is created
+        default: false,
       },
-    // Add more fields as needed
+    image:String
 });
 
 const User = mongoose.model('User', userSchema);

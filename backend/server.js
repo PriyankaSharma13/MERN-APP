@@ -4,94 +4,100 @@ const mongoose = require('mongoose');
 // const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const multer = require('multer');
-const upload = multer({ dest: 'uploads/' });
+// const upload = multer({ dest: 'uploads/' });
+const uuidv4 = require('uuid').v4;
 const cors = require('cors');
 const app = express();
 const port = 8000;
+const path = require("path");
+// const { register } = require('module');
 
 app.use(cors());
 app.use(express.json());
+app.use(express.static('public'))
+app.use('/uploads', express.static('public/uploads'));
 
-const JWT_SECRET = 'hgkjsdafsanghertuaskfoiw44852k'; // Replace with a secure key
 
-mongoose.connect('mongodb+srv://officialpriyanka013:U3BYNMLhv6nD0i9q@cluster-test.ho7myua.mongodb.net/?retryWrites=true&w=majority').then(() => {
+const JWT_SECRET = 'hgkjsdafsanghertuaskfoiw44852k';
+// mongodb://127.0.0.1:27017/User
+// ---------cluster-----------
+
+mongoose.connect('mongodb+srv://alty7codvdztz:S2O4M8fVeSa2fQYc@cluster0.yg8jszg.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0').then(() => {
     console.log('Db is connected');
 }).catch((err) => {
     console.log(err);
 });
 
-app.post('/register', upload.single('profilepic'), async (req, res) => {
+// ----------------Upload image Storage-----------------
+
+const storage = multer.diskStorage({
+    destination: function (req, file, cb) {
+        cb(null, 'public/uploads');
+    },
+    filename: (req, file, cb) => {
+        cb(null, file.fieldname + '-' + Date.now() + path.extname(file.originalname));
+    }
+});
+
+const upload = multer({
+    storage: storage
+});
+
+// -------------------------register------------
+
+app.post('/register', upload.single('file'), async (req, res) => {
+    
     try {
-        // Create a new user instance based on the request body
-        const newUser = new User(req.body);
+        const { name, email, password, phone, zipcode } = req.body;
 
-        // Save the new user to the database
-        await newUser.save();
+        const existingUser = await User.findOne({ email });
+        if (existingUser) {
+            return res.status(400).json({ message: 'Email is already in use' });
+        }
 
-        res.status(201).json({ message: 'User registered successfully' });
+        const newUser = new User({
+            name, email, password, phone, zipcode,
+            image: req.file.filename,
+        })
+
+        const result = await newUser.save();
+        res.status(201).json({
+            message: 'User registered successfully',
+            userData: result
+        });
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Internal Server Error during registration' });
     }
+
 });
+
+// -------------------Login--------------
 
 app.post('/login', async (req, res) => {
     try {
         const { email, password } = req.body;
 
-        // Find the user with the provided email in the database
         const user = await User.findOne({ email });
 
-        // If the user doesn't exist, return an error
         if (!user) {
-            return res.status(401).json({ message: 'Authentication failed' });
+            return res.status(401).json({ message: 'Email incorrect' });
         }
+        const isPasswordValid = await User.findOne({ password });
 
-        // Compare the provided password with the hashed password stored in the database
-        const isPasswordValid = (password, user.password);
-
-        // If the password is not valid, return an error
         if (!isPasswordValid) {
-            return res.status(401).json({ message: 'Authentication failed' });
+            return res.status(401).json({ message: 'Password is incorrect' });
         }
-        // Update user's is_loggedin status to 1
         await User.updateOne({ email }, { $set: { is_loggedin: true } });
-        // Generate a JWT token for the user
         const token = jwt.sign({ userId: user._id }, JWT_SECRET, { expiresIn: '1h' });
 
-        // Return the token to the frontend
-        res.status(200).json({ token, email });
+        res.status(200).json({ token, email, isPasswordValid });
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Internal Server Error during login' });
     }
 });
 
-app.put('/update-profile/:userId', async (req, res) => {
-    try {
-        const userId = req.params.userId;
-        const updatedData = req.body;
-
-        // Find the user in the database by ID
-        const user = await User.findById(userId);
-
-        // If the user doesn't exist, return an error
-        if (!user) {
-            return res.status(404).json({ message: 'User not found' });
-        }
-
-        // Update user data
-        Object.assign(user, updatedData);
-
-        // Save the updated user to the database
-        await user.save();
-
-        res.status(200).json({ message: 'User profile updated successfully' });
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: 'Internal Server Error during profile update' });
-    }
-});
 
 app.post('/users', async (req, res) => {
     try {
@@ -102,19 +108,56 @@ app.post('/users', async (req, res) => {
             return res.status(404).json({ message: 'User not found' });
         }
 
-        // Return an array with a single user for simplicity
-        res.status(200).json([user]);
+        res.status(200).json({ user});
     } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: 'Internal Server Error' });
+        console.error('Error fetching user profile:', error);
+        res.status(500).json({ message: 'Internal Server Error during profile fetch' });
     }
 });
+
+
+// -----------------UpdateProfile----------------------
+
+
+app.put('/update-profile/:userId', upload.single('image'), async (req, res) => {
+    try {
+        const userId = req.params.userId;
+        console.log("hj",req.params.userId);
+        const user = await User.findById(userId);
+            
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        user.name = req.body.name || user.name;
+        user.phone = req.body.phone || user.phone;
+        user.zipcode = req.body.zipcode || user.zipcode;
+        
+       
+        if (req.file) {
+            user.image = req.file.filename; 
+        }
+      
+        await user.save();
+
+        const updatedUser = await User.findById(userId);
+        res.status(200).json({
+            message: 'User profile updated successfully',
+            user: updatedUser,
+        });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Internal Server Error during profile update' });
+    }
+});
+
+
+// -----------------find-nearest-users----------------
 
 app.post('/find-nearest-users', async (req, res) => {
     try {
         const { zipcode } = req.body;
-        console.log(zipcode, "zipCode");
-        // Retrieve up to 5 users with the same zip code and is_loggedin = true
+
         const nearestUsers = await User.find({ zipcode, is_loggedin: true }).limit(5);
         res.status(200).json(nearestUsers);
     } catch (error) {

@@ -1,7 +1,21 @@
 import React, { useState, useEffect } from 'react';
-import { Container, Typography, List, ListItem, ListItemText } from '@material-ui/core';
+import { Container, Typography, List, ListItem, ListItemText, makeStyles,Box } from '@material-ui/core';
+import NavBar from '../common/Navigation';
 
+
+const useStyles = makeStyles((theme) => ({
+  formContainer: {
+      marginTop: theme.spacing(10),
+      padding: theme.spacing(4),
+      border: "2px solid #ddd",
+      borderRadius: "8px",
+      boxShadow: "0 4px 8px rgba(0, 0, 0, 0.1)",
+      background: "#fff",
+  },
+})
+)
 const FindNearestUsers = () => {
+  const classes = useStyles();
   const [nearestUsers, setNearestUsers] = useState([]);
   useEffect(() => {
     const fetchNearestUsers = async () => {
@@ -33,6 +47,8 @@ const FindNearestUsers = () => {
   }, []);
   return (
     <Container maxWidth="sm">
+      <NavBar/>
+       <Box className={classes.formContainer}>
       <Typography variant="h4">Nearest Users</Typography>
       <List>
         {nearestUsers.map((user, index) => (
@@ -41,6 +57,7 @@ const FindNearestUsers = () => {
           </ListItem>
         ))}
       </List>
+      </Box>
     </Container>
   );
 };
